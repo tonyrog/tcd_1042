@@ -112,8 +112,10 @@ keymask(Key) ->
     case Key of
 	bow_thruster_starboard   -> ?BOW_STARB;   %% green
 	bow_thruster_port        -> ?BOW_PORT;    %% red
+	bow_thruster_onoff       -> ?BOW_ONOFF;   %%
 	stern_thruster_starboard -> ?STERN_STARB; %% green
 	stern_thruster_port      -> ?STERN_PORT;  %% redn
+	stern_thruster_onoff     -> ?BOW_ONOFF;   %%
 	[K|Ks] -> keymask(K) bor keymask(Ks);
 	[] -> 0
     end.
@@ -148,7 +150,7 @@ start_link(Args) ->
 %%--------------------------------------------------------------------
 init(Opts0) ->
     lager:debug("opts ~p",[Opts0]),
-    Opts = Opts0 ++ application:get_all_env(tcp_1042_spl),
+    Opts = Opts0 ++ application:get_all_env(tcd_1042),
     RetryInterval = proplists:get_value(retry_interval,Opts,
 					?DEFAULT_RETRY_INTERVAL),
     Device = case proplists:get_value(device, Opts) of
@@ -209,7 +211,7 @@ handle_call({subscribe,Pid}, _From, S) ->
     Sub = #sub { pid=Pid, ref=Ref },
     {reply, {ok,Ref}, S#s { subs = [Sub|S#s.subs] }};
 handle_call({unsubscribe,Ref}, _From, S) ->
-    case lists:keytake(#sub.ref, Ref, S#s.subs) of
+    case lists:keytake(Ref, #sub.ref, S#s.subs) of
 	false ->
 	    {reply, {error, enoent}, S};
 	{value,Sub,Subs} ->
@@ -290,7 +292,7 @@ handle_info({timeout,_Timer,simulated_status},S) ->
 
 handle_info({'DOWN',Ref,process,Pid,Reason}, S) ->
     lager:debug("tcd_1042: process ~p crashed, reason ~p", [Pid,Reason]),
-    case lists:keytake(#sub.ref, Ref, S#s.subs) of
+    case lists:keytake(Ref, #sub.ref, S#s.subs) of
 	false ->
 	    {noreply, S};
 	{value,_Sub,Subs} ->
@@ -348,7 +350,7 @@ handle_status(Buffer, S) ->
 			 S
 		 end,
 	    S2 = if Bow =/= S1#s.bow_status ->
-			 send_status(S1#s { bow_status = Stern });
+			 send_status(S1#s { bow_status = Bow });
 		    true ->
 			 S1
 		 end,
@@ -382,7 +384,6 @@ send_status(S) ->
 	      Sub#sub.pid ! {tcp_1042, Sub#sub.ref, Message}
       end, S#s.subs),
     S.
-
 
 open(S0=#s {device = simulated }) ->
     lager:debug("tcd_1042: simulated"),
