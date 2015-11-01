@@ -1,0 +1,13 @@
+{application, tcd_1042,
+ [
+  {description, "TCD 1042 Joystick controller"},
+  {vsn, "1.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+		  uart
+                 ]},
+  {mod, { tcd_1042_app, []}},
+  {env, []}
+ ]}.
