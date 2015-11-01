@@ -102,9 +102,11 @@ getkeys() ->
 	    Error
     end.
 
+-spec subscribe() -> {ok,reference()} | {error,Reason::term()}.
 subscribe() ->
     gen_server:call(?SERVER, {subscribe, self()}).
 
+-spec unsubscribe(Ref::reference()) -> ok | {error,enoent}.
 unsubscribe(Ref) when is_reference(Ref) ->
     gen_server:call(?SERVER, {unsubscribe, Ref}).
 
@@ -381,7 +383,7 @@ send_status(S) ->
 	],
     lists:foreach(
       fun(Sub) ->
-	      Sub#sub.pid ! {tcp_1042, Sub#sub.ref, Message}
+	      Sub#sub.pid ! {tcd_1042, Sub#sub.ref, Message}
       end, S#s.subs),
     S.
 

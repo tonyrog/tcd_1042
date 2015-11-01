@@ -43,12 +43,12 @@ void setup() {
   pinMode(pin_bow_onoff,  OUTPUT);
   pinMode(pin_bow_port,   OUTPUT);
   pinMode(pin_bow_starb,  OUTPUT);
-  pinMode(pin_bow_status, INPUT);
+  pinMode(pin_bow_status, INPUT_PULLUP);
 
   pinMode(pin_stern_onoff,  OUTPUT);
   pinMode(pin_stern_port,   OUTPUT);
   pinMode(pin_stern_starb,  OUTPUT);
-  pinMode(pin_stern_status, INPUT);
+  pinMode(pin_stern_status, INPUT_PULLUP);
 
   digitalWrite(pin_bow_onoff, LOW);
   digitalWrite(pin_bow_port, LOW);
@@ -90,10 +90,8 @@ void loop()
 	write_pins(key_mask,  HIGH);  // then set pins high
     }
     now = millis();
-    bow_v = digitalRead(pin_bow_status);
-    stern_v = digitalRead(pin_stern_status);
+    bow_v = !digitalRead(pin_bow_status);
     bow_s = bow_status;
-    stern_s = stern_status;
     
     if (bow_v == bow_prev_v) {
       if ((bow_v == HIGH) && (key_mask & BOW_ONOFF) &&
@@ -112,6 +110,9 @@ void loop()
        bow_time = now;
     }
     bow_prev_v = bow_v;
+
+    stern_v = !digitalRead(pin_stern_status);
+    stern_s = stern_status;
     
     if (stern_v == stern_prev_v) {
       if ((stern_v == HIGH) && (key_mask & BOW_ONOFF) &&
