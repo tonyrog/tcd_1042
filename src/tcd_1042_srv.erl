@@ -38,6 +38,7 @@
 %% button api
 -export([press/1, release/1, getkeys/0]).
 -export([subscribe/0, unsubscribe/1]).
+-export([get_status/1]).
 
 -define(SERVER, ?MODULE).
 -define(DEFAULT_RETRY_INTERVAL, 2000).
@@ -102,6 +103,10 @@ getkeys() ->
 	    Error
     end.
 
+-spec get_status(Key::atom()) -> Status::string() | {error,Reason::term()}.
+get_status(Key) ->
+    gen_server:call(?SERVER, {get_status, Key}).
+
 -spec subscribe() -> {ok,reference()} | {error,Reason::term()}.
 subscribe() ->
     gen_server:call(?SERVER, {subscribe, self()}).
@@ -116,7 +121,7 @@ keymask(Key) ->
 	bow_thruster_port        -> ?BOW_PORT;    %% red
 	bow_thruster_onoff       -> ?BOW_ONOFF;   %%
 	stern_thruster_starboard -> ?STERN_STARB; %% green
-	stern_thruster_port      -> ?STERN_PORT;  %% redn
+	stern_thruster_port      -> ?STERN_PORT;  %% red
 	stern_thruster_onoff     -> ?BOW_ONOFF;   %%
 	[K|Ks] -> keymask(K) bor keymask(Ks);
 	[] -> 0
@@ -208,6 +213,8 @@ handle_call({release,Mask}, _From, S) ->
     {reply, Reply, S#s { key_mask = KeyMask }};
 handle_call(getkeys, _From, S) ->
     {reply, {ok,S#s.key_mask}, S};
+handle_call({get_status, Key}, _From, S) ->
+    {reply, get_status(Key, S), S};
 handle_call({subscribe,Pid}, _From, S) ->
     Ref = erlang:monitor(process, Pid),
     Sub = #sub { pid=Pid, ref=Ref },
@@ -387,6 +394,15 @@ send_status(S) ->
       end, S#s.subs),
     S.
 
+get_status(bow_thruster_status, S) ->
+    integer_to_list(S#s.bow_status);
+get_status(stern_thruster_status, S) ->
+    integer_to_list(S#s.stern_status);
+get_status(Key,S) ->
+    Pressed = (keymask(Key) band S#s.key_mask) =/= 0,
+    ?ite(Pressed,"1","0").
+	    
+	
 open(S0=#s {device = simulated }) ->
     lager:debug("tcd_1042: simulated"),
     start_timer(5000, simulated_status),
