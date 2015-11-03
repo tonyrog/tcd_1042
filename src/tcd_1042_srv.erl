@@ -63,7 +63,7 @@
 
 -record(s, {
 	  uart,             %% serial line port id
-	  device,           %% device name
+	  device,           %% device name | simulated | none
 	  baud_rate,        %% baud rate to uart
 	  retry_interval,   %% Timeout for open retry
 	  retry_timer,      %% Timer reference for retry
@@ -335,6 +335,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 send_mask(Mask, #s { device = simulated }) ->
     lager:info("sending ~w.",[Mask]);
+send_mask(_Mask, #s { device = none }) ->
+    ok;
 send_mask(Mask, #s { uart = U }) when U =/= undefined ->
     uart:send(U, [Mask]).
 
@@ -387,6 +389,8 @@ send_status(S) ->
       end, S#s.subs),
     S.
 
+open(S0=#s {device = none }) ->
+    {ok, S0};
 open(S0=#s {device = simulated }) ->
     lager:debug("tcd_1042: simulated"),
     start_timer(5000, simulated_status),
