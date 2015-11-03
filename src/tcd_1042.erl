@@ -29,6 +29,7 @@
 %% button api
 -export([press/1, release/1, getkeys/0]).
 -export([subscribe/0, unsubscribe/1]).
+-export([get_status/1]).
 
 start() ->
     application:start(lager),
@@ -43,6 +44,9 @@ release(Key) when is_atom(Key); is_list(Key) ->
 
 getkeys() ->
     tcd_1042_srv:getkeys().
+
+get_status(Key) ->
+    tcd_1042_srv:get_status(Key).
 
 subscribe() ->
     tcd_1042_srv:subscribe().
