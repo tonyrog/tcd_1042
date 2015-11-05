@@ -345,10 +345,11 @@ send_mask(Mask, #s { device = simulated }) ->
 send_mask(_Mask, #s { device = none }) ->
     ok;
 send_mask(Mask, #s { uart = U }) when U =/= undefined ->
+    lager:debug("sending ~w.",[Mask]),
     uart:send(U, [Mask]).
 
 handle_input(Buffer, S) ->
-    lager:info("handle_input: got ~p", [Buffer]),
+    lager:debug("handle_input: got ~p", [Buffer]),
     S1 = handle_status(Buffer, S),
     S1#s { buf = <<>> }.
 
