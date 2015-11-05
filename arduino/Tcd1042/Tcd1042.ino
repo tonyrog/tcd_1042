@@ -1,8 +1,9 @@
 // -*- c -*-
-const int pin_bow_onoff = 2;    // onoff key
-const int pin_bow_port  = 3;    // left
-const int pin_bow_starb = 4;    // right
-const int pin_bow_status = 5;   // onoff status
+const int pin_bow_onoff = 2;    // onoff key  ( yellow cable )
+const int pin_bow_port  = 3;    // left       ( red cabel )
+const int pin_bow_starb = 4;    // right      ( green cabel )
+const int pin_bow_status = 5;   // onoff status ( orange )
+// blue cable = gnd
 
 const int pin_stern_onoff = 6;   // onoff key
 const int pin_stern_port  = 7;   // left
