@@ -30,15 +30,24 @@
 
 %% API
 -export([start_link/0,start_link/1]).
+-export([config_change/3]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+-export([init/1, 
+	 handle_call/3, 
+	 handle_cast/2, 
+	 handle_info/2,
+	 terminate/2, 
+	 code_change/3]).
 
 %% button api
 -export([press/1, release/1, getkeys/0]).
 -export([subscribe/0, unsubscribe/1]).
 -export([get_status/1]).
+
+%% test api
+-export([pause/0, resume/0]).
+-export([dump/0]).
 
 -define(SERVER, ?MODULE).
 -define(DEFAULT_RETRY_INTERVAL, 2000).
@@ -68,6 +77,7 @@
 	  baud_rate,        %% baud rate to uart
 	  retry_interval,   %% Timeout for open retry
 	  retry_timer,      %% Timer reference for retry
+	  pause = false,    %% Pause input
 	  key_mask = 0,     %% Keys that are pressed
 	  stern_status = 0, %% stern thruster is off (on = 1)
 	  bow_status = 0,   %% bow thruster is off (on = 1)
@@ -127,6 +137,21 @@ keymask(Key) ->
 	[] -> 0
     end.
 
+-spec pause() -> ok | {error, Error::atom()}.
+pause() ->
+    gen_server:call(?SERVER, pause).
+
+-spec resume() -> ok | {error, Error::atom()}.
+resume() ->
+    gen_server:call(?SERVER, resume).
+
+-spec dump() -> ok | {error, Error::atom()}.
+dump() ->
+    gen_server:call(?SERVER, dump).
+
+config_change(Changed,New,Removed) ->
+    gen_server:call(?SERVER, {config_change,Changed,New,Removed}).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
@@ -160,6 +185,7 @@ init(Opts0) ->
     Opts = Opts0 ++ application:get_all_env(tcd_1042),
     RetryInterval = proplists:get_value(retry_interval,Opts,
 					?DEFAULT_RETRY_INTERVAL),
+    Pause = proplists:get_value(pause, Opts, false),
     Device = case proplists:get_value(device, Opts) of
 		 undefined -> os:getenv("TCD_1042_DEVICE");
 		 D -> D
@@ -175,7 +201,8 @@ init(Opts0) ->
 	   end,
     S = #s{ device = Device,
 	    baud_rate = Baud,
-	    retry_interval = RetryInterval
+	    retry_interval = RetryInterval,
+	    pause = Pause
 	  },
     if Device =:= false; Device =:= "" ->
 	    lager:error("tcd_1042: missing device argument"),
@@ -227,6 +254,33 @@ handle_call({unsubscribe,Ref}, _From, S) ->
 	    demonitor(Sub#sub.ref),
 	    {reply, ok, S#s { subs = Subs }}
     end;
+handle_call(pause, _From, S=#s {pause = false, uart = Uart}) 
+  when Uart =/= undefined ->
+    lager:debug("pause.", []),
+    lager:debug("closing device ~s", [S#s.device]),
+    R = uart:close(S#s.uart),
+    lager:debug("closed ~p", [R]),
+    {reply, ok, S#s {pause = true}};
+handle_call(pause, _From, S) ->
+    lager:debug("pause when not active.", []),
+    {reply, ok, S#s {pause = true}};
+handle_call(resume, _From, S=#s {pause = true}) ->
+    lager:debug("resume.", []),
+    case open(S#s {pause = false}) of
+	{ok, S1} -> {reply, ok, S1};
+	Error -> {stop, Error}
+    end;
+handle_call(resume, _From, S=#s {pause = false}) ->
+    lager:debug("resume when not paused.", []),
+    {reply, ok, S};
+handle_call(dump, _From, S) ->
+    lager:debug("dump.", []),
+    {reply, {ok, S}, S};
+handle_call({config_change,_Changed,_New,_Removed},_From,S) ->
+    lager:debug("config_change changed=~p, new=~p, removed=~p\n",
+		[_Changed,_New,_Removed]),
+    {reply, ok, S};
+
 handle_call(_Request, _From, State) ->
     {reply, {error,bad_call}, State}.
 
@@ -408,6 +462,8 @@ get_status(Key,S) ->
 
 open(S0=#s {device = none }) ->
     {ok, S0};
+open(S0=#s {pause = true}) ->
+    {ok, S0};
 open(S0=#s {device = simulated }) ->
     lager:debug("tcd_1042: simulated"),
     start_timer(5000, simulated_status),
@@ -428,6 +484,8 @@ open(S0=#s {device = DeviceName, baud_rate = Baud }) ->
 	    Error
     end.
 
+reopen(S=#s {pause = true}) ->
+    {ok, S};
 reopen(S) ->
     if S#s.uart =/= undefined ->
 	    lager:debug("tcd_1042: closing device ~s", [S#s.device]),
