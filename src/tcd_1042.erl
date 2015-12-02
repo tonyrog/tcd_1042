@@ -31,25 +31,36 @@
 -export([subscribe/0, unsubscribe/1]).
 -export([get_status/1]).
 
+%% test api
+-export([pause/0, resume/0]).
+
+-define(SERVER, tcd_1042_srv).
+
 start() ->
     application:start(lager),
     application:start(uart),
     application:start(tcd_1042).
 
 press(Key) when is_atom(Key); is_list(Key) ->
-    tcd_1042_srv:press(Key).
+    ?SERVER:press(Key).
 
 release(Key) when is_atom(Key); is_list(Key) ->
-    tcd_1042_srv:release(Key).
+    ?SERVER:release(Key).
 
 getkeys() ->
-    tcd_1042_srv:getkeys().
+    ?SERVER:getkeys().
 
 get_status(Key) ->
-    tcd_1042_srv:get_status(Key).
+    ?SERVER:get_status(Key).
 
 subscribe() ->
-    tcd_1042_srv:subscribe().
+    ?SERVER:subscribe().
 
 unsubscribe(Ref) ->
-    tcd_1042_srv:unsubscribe(Ref).
+    ?SERVER:unsubscribe(Ref).
+
+pause() ->
+    ?SERVER:pause().
+
+resume() ->
+    ?SERVER:resume().

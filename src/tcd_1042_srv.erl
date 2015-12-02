@@ -268,7 +268,7 @@ handle_call(resume, _From, S=#s {pause = true}) ->
     lager:debug("resume.", []),
     case open(S#s {pause = false}) of
 	{ok, S1} -> {reply, ok, S1};
-	Error -> {stop, Error}
+	Error -> {reply, Error, S}
     end;
 handle_call(resume, _From, S=#s {pause = false}) ->
     lager:debug("resume when not paused.", []),
@@ -400,7 +400,9 @@ send_mask(_Mask, #s { device = none }) ->
     ok;
 send_mask(Mask, #s { uart = U }) when U =/= undefined ->
     lager:debug("sending ~w.",[Mask]),
-    uart:send(U, [Mask]).
+    uart:send(U, [Mask]);
+send_mask(_Mask, _S) ->
+    ok.
 
 handle_input(Buffer, S) ->
     lager:debug("handle_input: got ~p", [Buffer]),
@@ -485,7 +487,7 @@ open(S0=#s {device = DeviceName, baud_rate = Baud }) ->
     end.
 
 reopen(S=#s {pause = true}) ->
-    {ok, S};
+    S;
 reopen(S) ->
     if S#s.uart =/= undefined ->
 	    lager:debug("tcd_1042: closing device ~s", [S#s.device]),
