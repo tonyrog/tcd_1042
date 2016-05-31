@@ -29,10 +29,10 @@
 %% button api
 -export([press/1, release/1, getkeys/0]).
 -export([subscribe/0, unsubscribe/1]).
--export([get_status/1]).
+-export([value/1]).
 
 %% test api
--export([pause/0, resume/0]).
+-export([pause/0, resume/0, ifstatus/0]).
 
 -define(SERVER, tcd_1042_srv).
 
@@ -50,8 +50,8 @@ release(Key) when is_atom(Key); is_list(Key) ->
 getkeys() ->
     ?SERVER:getkeys().
 
-get_status(Key) ->
-    ?SERVER:get_status(Key).
+value(Key) ->
+    ?SERVER:value(Key).
 
 subscribe() ->
     ?SERVER:subscribe().
@@ -59,8 +59,14 @@ subscribe() ->
 unsubscribe(Ref) ->
     ?SERVER:unsubscribe(Ref).
 
+-spec pause() -> ok | {error, Error::atom()}.
 pause() ->
     ?SERVER:pause().
 
+-spec resume() -> ok | {error, Error::atom()}.
 resume() ->
     ?SERVER:resume().
+
+-spec ifstatus() -> {ok, Status::atom()} | {error, Error::atom()}.
+ifstatus() ->
+    ?SERVER:ifstatus().

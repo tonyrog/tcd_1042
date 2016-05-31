@@ -43,10 +43,10 @@
 %% button api
 -export([press/1, release/1, getkeys/0]).
 -export([subscribe/0, unsubscribe/1]).
--export([get_status/1]).
+-export([value/1]).
 
 %% test api
--export([pause/0, resume/0]).
+-export([pause/0, resume/0, ifstatus/0]).
 -export([dump/0]).
 
 -define(SERVER, ?MODULE).
@@ -113,9 +113,9 @@ getkeys() ->
 	    Error
     end.
 
--spec get_status(Key::atom()) -> Status::string() | {error,Reason::term()}.
-get_status(Key) ->
-    gen_server:call(?SERVER, {get_status, Key}).
+-spec value(Key::atom()) -> Value::string() | {error,Reason::term()}.
+value(Key) ->
+    gen_server:call(?SERVER, {value, Key}).
 
 -spec subscribe() -> {ok,reference()} | {error,Reason::term()}.
 subscribe() ->
@@ -144,6 +144,10 @@ pause() ->
 -spec resume() -> ok | {error, Error::atom()}.
 resume() ->
     gen_server:call(?SERVER, resume).
+
+-spec ifstatus() -> ok | {error, Error::atom()}.
+ifstatus() ->
+    gen_server:call(?SERVER, ifstatus).
 
 -spec dump() -> ok | {error, Error::atom()}.
 dump() ->
@@ -240,8 +244,8 @@ handle_call({release,Mask}, _From, S) ->
     {reply, Reply, S#s { key_mask = KeyMask }};
 handle_call(getkeys, _From, S) ->
     {reply, {ok,S#s.key_mask}, S};
-handle_call({get_status, Key}, _From, S) ->
-    {reply, get_status(Key, S), S};
+handle_call({value, Key}, _From, S) ->
+    {reply, value(Key, S), S};
 handle_call({subscribe,Pid}, _From, S) ->
     Ref = erlang:monitor(process, Pid),
     Sub = #sub { pid=Pid, ref=Ref },
@@ -273,6 +277,9 @@ handle_call(resume, _From, S=#s {pause = true}) ->
 handle_call(resume, _From, S=#s {pause = false}) ->
     lager:debug("resume when not paused.", []),
     {reply, ok, S};
+handle_call(ifstatus, _From, S=#s {pause = Pause}) ->
+    lager:debug("ifstatus.", []),
+    {reply, {ok, if Pause -> paused; true -> active end}, S};
 handle_call(dump, _From, S) ->
     lager:debug("dump.", []),
     {reply, {ok, S}, S};
@@ -453,11 +460,11 @@ send_status(S) ->
       end, S#s.subs),
     S.
 
-get_status(bow_thruster_status, S) ->
+value(bow_thruster_status, S) ->
     integer_to_list(S#s.bow_status);
-get_status(stern_thruster_status, S) ->
+value(stern_thruster_status, S) ->
     integer_to_list(S#s.stern_status);
-get_status(Key,S) ->
+value(Key,S) ->
     Pressed = (keymask(Key) band S#s.key_mask) =/= 0,
     ?ite(Pressed,"1","0").
 	    
