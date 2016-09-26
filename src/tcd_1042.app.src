@@ -1,7 +1,7 @@
 {application, tcd_1042,
  [
   {description, "TCD 1042 Joystick controller"},
-  {vsn, tag},
+  {vsn, git},
   {registered, []},
   {applications, [
                   kernel,
