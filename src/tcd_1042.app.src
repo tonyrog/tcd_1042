@@ -1,3 +1,4 @@
+%% -*- erlang -*-
 {application, tcd_1042,
  [
   {description, "TCD 1042 Joystick controller"},
@@ -6,7 +7,8 @@
   {applications, [
                   kernel,
                   stdlib,
-		  uart
+		  uart,
+		  elarm
                  ]},
   {mod, { tcd_1042_app, []}},
   {env, []}

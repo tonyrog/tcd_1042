@@ -52,6 +52,8 @@
 -define(SERVER, ?MODULE).
 -define(DEFAULT_RETRY_INTERVAL, 2000).
 -define(DEFAULT_BAUDRATE, 9600).
+-define(SUBSYS, tcd_1042).
+-define(ALARM, 'interface-down').
 
 %% avoid sending 3 and 12
 -define(BOW_ONOFF,     2#00000001).   %% 1
@@ -495,10 +497,12 @@ open(S0=#s {device = DeviceName, baud_rate = Baud }) ->
     case uart:open(DeviceName, UartOpts) of
 	{ok,Uart} ->
 	    lager:debug("tcd_1042:open: ~s@~w", [DeviceName,Baud]),
+	    elarm:clear(?ALARM, ?SUBSYS),
 	    {ok, S0#s { uart = Uart }};
 	{error,E} when E =:= eaccess; E =:= enoent ->
 	    lager:debug("tcd_1042:open: ~s@~w  error ~w, will try again "
 		   "in ~p msecs.", [DeviceName,Baud,E,S0#s.retry_interval]),
+	    elarm:raise(?ALARM, ?SUBSYS, [{device, DeviceName}]),
 	    {ok, reopen(S0)};
 	Error ->
 	    lager:error("tcd_1042: error ~w", [Error]),
@@ -507,10 +511,11 @@ open(S0=#s {device = DeviceName, baud_rate = Baud }) ->
 
 reopen(S=#s {pause = true}) ->
     S;
-reopen(S) ->
+reopen(S=#s {device = DeviceName}) ->
     if S#s.uart =/= undefined ->
-	    lager:debug("tcd_1042: closing device ~s", [S#s.device]),
+	    lager:debug("tcd_1042: closing device ~s", [DeviceName]),
 	    R = uart:close(S#s.uart),
+	    elarm:raise(?ALARM, ?SUBSYS,{device, DeviceName}),
 	    lager:debug("tcd_1042: closed ~p", [R]),
 	    R;
        true ->
